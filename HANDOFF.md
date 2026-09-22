@@ -34,7 +34,7 @@ Group drops now cancel relevant queries once, snapshot the group once, and optim
 - `pnpm exec turbo run typecheck --filter=@get-bb/plugin-sdk --force` — passed
 - Source-app smoke tests confirmed both parenting and section-drop unparenting persisted for both roots, preserved the shared environment, updated immediately, and survived reload. A group-hover smoke test confirmed both drag previews read `Reviewer worktree group (2 threads)` and was cancelled before drop.
 - Optimistic source-app smoke: both PATCH requests were delayed by 30 seconds. Immediately after drop the sidebar showed the complete group in `Review controls` while `dispatched` remained `0`, and direct GETs still reported both roots beneath `thr_dsgc8btyaw`. Reload cancelled the delayed writes and restored the persisted hierarchy.
-- Follow-up CI is pending for the atomic optimistic group update. See the [PR checks](https://github.com/get-bb/bb/pull/4078/checks).
+- Final CI: 14 successful checks, 2 expected skips, 0 pending, and 0 failures. The PR reports `CLEAN` and `MERGEABLE`. The package-test rerun passed after the first attempt hit three unrelated five-second UI-test timeouts under runner contention; the complete local thread-list suite also passed all 312 tests.
 
 The verification inventory also reports pre-existing recipe drift: `Unmapped CLI family: browser; add recipes and an explicit owner`.
 
