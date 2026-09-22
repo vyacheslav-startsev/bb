@@ -6,6 +6,8 @@ Dragging a worktree/environment group onto a thread could not create a parent re
 
 The fix adds a `nest-group` decision that reparents only the worktree group's root threads, preserving descendants and rejecting cycles. Its symmetric `detach-group` decision clears only those root relationships when the group is dropped on a section, moves every represented thread to that section, and preserves descendants. The target band is now the middle 70% of the row, expands to the whole row once armed, activates after 200 ms, and uses the pointer with 12 px of left-side tolerance. Group drags now also replace the representative root's cached display title, so the floating overlay and projected child identify the worktree group and thread count instead of appearing to drag one root thread.
 
+Group drops now cancel relevant queries once, snapshot the group once, and optimistically patch every represented thread in one cache update before the individual server requests settle. A failed request rolls the complete group snapshot back and invalidates the affected queries. Synchronous plugin SDK thread metadata updates use the same batching path, so the plugin-backed and built-in sidebars share the behavior.
+
 - Pull request: [#4078](https://github.com/get-bb/bb/pull/4078)
 - Related issue: [#3029](https://github.com/get-bb/bb/issues/3029) covers stale sidebar placement after a different reparenting path; this change does not close it.
 
@@ -27,10 +29,12 @@ The fix adds a `nest-group` decision that reparents only the worktree group's ro
 
 - `pnpm exec turbo run test --filter=bb-plugin-thread-list --force -- --run app/dnd/useSectionThreadDnd.test.ts app/dnd/useSectionThreadDnd.projection.test.tsx` — 46 passed
 - `pnpm exec turbo run typecheck --filter=bb-plugin-thread-list --force` — passed
-- `pnpm exec turbo run test --filter=@bb/app --force -- --run src/components/sidebar/useSectionThreadDnd.test.ts src/components/sidebar/useSectionThreadDnd.projection.test.tsx` — 46 passed
+- `pnpm exec turbo run test --filter=@bb/app --force -- --run src/hooks/mutations/thread-state-mutations.test.tsx src/lib/plugin-bound-sdk.test.ts src/components/sidebar/useSectionThreadDnd.test.ts src/components/sidebar/useSectionThreadDnd.projection.test.tsx` — 65 passed
 - `pnpm exec turbo run typecheck --filter=@bb/app --force` — passed
+- `pnpm exec turbo run typecheck --filter=@get-bb/plugin-sdk --force` — passed
 - Source-app smoke tests confirmed both parenting and section-drop unparenting persisted for both roots, preserved the shared environment, updated immediately, and survived reload. A group-hover smoke test confirmed both drag previews read `Reviewer worktree group (2 threads)` and was cancelled before drop.
-- Final follow-up CI: 14 passed, 2 intentionally skipped, 0 failed, 0 cancelled, and 0 pending. GitHub reports the PR `CLEAN` and `MERGEABLE`. See the [PR checks](https://github.com/get-bb/bb/pull/4078/checks).
+- Optimistic source-app smoke: both PATCH requests were delayed by 30 seconds. Immediately after drop the sidebar showed the complete group in `Review controls` while `dispatched` remained `0`, and direct GETs still reported both roots beneath `thr_dsgc8btyaw`. Reload cancelled the delayed writes and restored the persisted hierarchy.
+- Follow-up CI is pending for the atomic optimistic group update. See the [PR checks](https://github.com/get-bb/bb/pull/4078/checks).
 
 The verification inventory also reports pre-existing recipe drift: `Unmapped CLI family: browser; add recipes and an explicit owner`.
 

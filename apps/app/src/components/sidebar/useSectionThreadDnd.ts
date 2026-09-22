@@ -24,6 +24,7 @@ import {
   useUnpinAndMoveThread,
   useUnpinThread,
   useUpdateThread,
+  useUpdateThreads,
 } from "@/hooks/mutations/thread-state-mutations";
 import type { NeighborReorderRequest } from "@bb/client-core";
 import {
@@ -1138,6 +1139,7 @@ export function useSectionThreadDnd({
     ],
   );
   const updateThread = useUpdateThread();
+  const updateThreads = useUpdateThreads();
   const pinThread = usePinThread();
   const unpinThread = useUnpinThread();
   const unpinAndMoveThread = useUnpinAndMoveThread();
@@ -1402,40 +1404,35 @@ export function useSectionThreadDnd({
       }
       switch (decision.kind) {
         case "move-group":
-          void Promise.allSettled(
-            decision.threadIds.map((id) =>
-              updateThread.mutateAsync({ id, sectionId: decision.sectionId }),
-            ),
-          ).finally(clearProjectedDrag);
+          updateThreads.mutate(
+            decision.threadIds.map((threadId) => ({
+              threadId,
+              sectionId: decision.sectionId,
+            })),
+            { onSettled: clearProjectedDrag },
+          );
           break;
         case "detach-group": {
           const rootThreadIds = new Set(decision.rootThreadIds);
-          void Promise.allSettled(
-            decision.threadIds.map((id) =>
-              rootThreadIds.has(id)
-                ? updateThread.mutateAsync({
-                    id,
-                    parentThreadId: null,
-                    sectionId: decision.sectionId,
-                  })
-                : updateThread.mutateAsync({
-                    id,
-                    sectionId: decision.sectionId,
-                  }),
-            ),
-          ).finally(clearProjectedDrag);
+          updateThreads.mutate(
+            decision.threadIds.map((threadId) => ({
+              threadId,
+              ...(rootThreadIds.has(threadId) ? { parentThreadId: null } : {}),
+              sectionId: decision.sectionId,
+            })),
+            { onSettled: clearProjectedDrag },
+          );
           break;
         }
         case "nest-group":
-          void Promise.allSettled(
-            decision.threadIds.map((id) =>
-              updateThread.mutateAsync({
-                id,
-                parentThreadId: decision.parentThreadId,
-                sectionId: decision.sectionId,
-              }),
-            ),
-          ).finally(clearProjectedDrag);
+          updateThreads.mutate(
+            decision.threadIds.map((threadId) => ({
+              threadId,
+              parentThreadId: decision.parentThreadId,
+              sectionId: decision.sectionId,
+            })),
+            { onSettled: clearProjectedDrag },
+          );
           break;
         case "move":
           updateThread.mutate(
@@ -1529,6 +1526,7 @@ export function useSectionThreadDnd({
       topLevelSectionIds,
       topLevelSectionOrder,
       updateThread,
+      updateThreads,
       unpinAndMoveThread,
       unpinThread,
     ],
