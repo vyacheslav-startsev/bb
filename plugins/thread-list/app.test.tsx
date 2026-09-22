@@ -198,7 +198,6 @@ describe("thread-list plugin", () => {
     await screen.findByText("Pinned thread");
     expect(sectionHeaders()).toEqual([
       "Pinned",
-      "Personal",
       "App",
       "Web",
       "Threads",
@@ -217,6 +216,33 @@ describe("thread-list plugin", () => {
       .closest("[data-sidebar-sticky-group]") as HTMLElement;
     expect(within(threadsGroup).getByText("Personal thread")).not.toBeNull();
   });
+
+  it.each([true, false])(
+    "renders personal rows once with standard projects: %s",
+    async (includeStandardProjects) => {
+      setPreferencesMirrorStorageForTest(null);
+      renderList(
+        { organizationMode: "project" },
+        {
+          sidebarThreads: {
+            projects: includeStandardProjects
+              ? PROJECTS
+              : PROJECTS.filter((project) => project.isPersonal),
+            sections: [],
+            threads: THREADS.filter(
+              (thread) => thread.projectId === PERSONAL_PROJECT_ID,
+            ),
+          },
+        },
+      );
+
+      await screen.findByTitle("Threads");
+      expect(threadIds()).toEqual(["thr_personal"]);
+      expect(sectionHeaders()).toEqual(
+        includeStandardProjects ? ["App", "Web", "Threads"] : ["Threads"],
+      );
+    },
+  );
 
   it("calls onNavigate when a thread row is opened", async () => {
     setPreferencesMirrorStorageForTest(null);

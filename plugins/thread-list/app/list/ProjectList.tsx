@@ -568,14 +568,16 @@ function ProjectModeSections({
   }, [effectivePinnedThreadIds, threads]);
   const projectRows = useMemo<ProjectListRowModel[]>(
     () =>
-      projects.map((project) => ({
-        project,
-        threadListState: getProjectThreadListState({
-          status,
-          threads: threadsByProject.get(project.id),
-        }),
-        isActive: false,
-      })),
+      projects
+        .filter((project) => project.id !== PERSONAL_PROJECT_ID)
+        .map((project) => ({
+          project,
+          threadListState: getProjectThreadListState({
+            status,
+            threads: threadsByProject.get(project.id),
+          }),
+          isActive: false,
+        })),
     [projects, status, threadsByProject],
   );
   const projectSectionIds = useMemo(
