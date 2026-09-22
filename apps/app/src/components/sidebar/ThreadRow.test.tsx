@@ -1678,3 +1678,22 @@ describe("ThreadRow", () => {
     ).toHaveProperty("value", "Thread");
   });
 });
+
+it("labels removed-machine history instead of displaying an error indicator", () => {
+  renderThreadRow({
+    thread: createThread({
+      status: "error",
+      runtime: {
+        displayStatus: "idle",
+        hostReconnectGraceExpiresAt: null,
+        machineRemoval: {
+          hostId: "host_old",
+          hostName: "Old laptop",
+          status: "removed",
+        },
+      },
+    }),
+  });
+  expect(screen.getByText("Machine removed")).toBeDefined();
+  expect(screen.getByRole("img", { name: "Machine removed" })).toBeDefined();
+});

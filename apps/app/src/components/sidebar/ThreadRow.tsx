@@ -1,3 +1,4 @@
+import { machineRemovalLabels } from "@/lib/machine-removal-display";
 import { SidebarRowControls } from "./SidebarRowControls";
 import {
   memo,
@@ -562,6 +563,11 @@ function ThreadRowComponent({
             </span>
           )}
         </span>
+        {thread.runtime.machineRemoval ? (
+          <span className="pointer-events-none relative truncate text-xs text-muted-foreground">
+            {machineRemovalLabels[thread.runtime.machineRemoval.status]}
+          </span>
+        ) : null}
         {parentOptions && hasChildren ? (
           <SidebarChildToggleChevron
             disabled={isEditing}
@@ -626,7 +632,20 @@ function ThreadRowComponent({
                   "absolute inset-0 flex items-center justify-center",
                 )}
               >
-                {splitIndicator.miniMap ? (
+                {thread.runtime.machineRemoval ? (
+                  <span
+                    className="text-muted-foreground"
+                    role="img"
+                    aria-label={
+                      machineRemovalLabels[thread.runtime.machineRemoval.status]
+                    }
+                    title={
+                      machineRemovalLabels[thread.runtime.machineRemoval.status]
+                    }
+                  >
+                    <Icon name="Computer" className="size-3.5" aria-hidden />
+                  </span>
+                ) : splitIndicator.miniMap ? (
                   <span
                     data-sidebar-thread-trailing-indicator=""
                     className={cn(
