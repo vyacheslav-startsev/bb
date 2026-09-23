@@ -207,7 +207,12 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
       ["pane.focus.down", "ArrowDown"],
     ] as const
   ).flatMap(([command, key]) =>
-    macArrowBindings(command, key, { mod: true, shift: true }, splitWithoutModal),
+    macArrowBindings(
+      command,
+      key,
+      { mod: true, shift: true },
+      splitWithoutModal,
+    ),
   ),
   unassignedBinding("pane.focus.previous", splitWithoutModal),
   unassignedBinding("pane.focus.next", splitWithoutModal),

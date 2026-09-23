@@ -67,6 +67,7 @@ import {
 import { AppCommandProvider } from "./components/commands/AppCommandProvider";
 import { ProviderCliInstallLogDialogHost } from "./components/provider-cli/provider-cli-install";
 import { ServerMoveOverlay } from "./components/machines/ServerMoveOverlay";
+import { AppUpdateHost } from "./components/app-update/AppUpdateHost";
 import { RouteLoadingSkeleton } from "./components/ui/route-loading-skeleton";
 
 const SettingsView = lazy(() =>
@@ -442,6 +443,7 @@ export function App() {
               </Routes>
               <ProviderCliInstallLogDialogHost />
               <ServerMoveOverlay />
+              <AppUpdateHost />
             </AppFileExternalNavigationHost>
           </AppNavigationUrlHost>
         </RouteNavigationProvider>

@@ -118,6 +118,10 @@ server.
 - `bb updates`
 - `bb updates status`
 - `bb updates apply`
+- `bb updates app`
+- `bb updates app status`
+- `bb updates app apply`
+- `bb updates app dismiss`
 
 ## terminal
 
