@@ -427,14 +427,10 @@ interface StartDaemonProcessArgs {
   serverUrl: string;
 }
 
-type ManagedProcessExitVerdict = "continue" | "probation-failed";
-type OnManagedProcessExitFn = () => Promise<ManagedProcessExitVerdict>;
-
 interface RestartManagedProcessArgs {
   context: BbAppStartContext;
   delayMilliseconds: DelayMillisecondsFn;
   isShutdownRequested: () => boolean;
-  onManagedProcessExit?: OnManagedProcessExitFn;
   processName: ManagedProcessName;
   start: StartManagedProcess;
 }
@@ -450,7 +446,6 @@ interface SuperviseFullStackProcessesArgs {
   delayMilliseconds: DelayMillisecondsFn;
   isHealthyServerAnswering?: (url: string) => Promise<boolean>;
   isShutdownRequested: () => boolean;
-  onManagedProcessExit?: OnManagedProcessExitFn;
   onServerMoved: (
     movedFile: ServerMovedFile,
   ) => Promise<FullStackSupervisionResult>;
@@ -510,8 +505,6 @@ interface SuperviseBbAppStartArgs {
   delayMilliseconds: DelayMillisecondsFn;
   isShutdownRequested: () => boolean;
   onFullStackReady?: () => Promise<void>;
-  onManagedProcessExit?: OnManagedProcessExitFn;
-  onStartupFailed?: (message: string) => Promise<void>;
   prepareFullStack: (entry: FullStackEntry) => Promise<FullStackStarters>;
   processes: ManagedFullStackProcesses;
   readServerMoveMarkers: ReadServerMoveMarkersFn;
@@ -3030,9 +3023,6 @@ async function restartManagedProcess(
         context: args.context,
         processName: args.processName,
       });
-      if ((await args.onManagedProcessExit?.()) === "probation-failed") {
-        return null;
-      }
       await args.delayMilliseconds({
         ms: MANAGED_PROCESS_RESTART_RETRY_DELAY_MS,
       });
@@ -3104,9 +3094,6 @@ export async function superviseFullStackProcesses(
         context: args.context,
         delayMilliseconds: args.delayMilliseconds,
         isShutdownRequested: args.isShutdownRequested,
-        ...(args.onManagedProcessExit === undefined
-          ? {}
-          : { onManagedProcessExit: args.onManagedProcessExit }),
         processName: "daemon",
         start: args.startDaemon,
       });
@@ -3118,12 +3105,6 @@ export async function superviseFullStackProcesses(
 
     const exitedProcess = await Promise.race([serverRun.exit, daemonRun.exit]);
     if (args.isShutdownRequested()) {
-      return "shutdown";
-    }
-    if (
-      (await args.onManagedProcessExit?.()) === "probation-failed" ||
-      args.isShutdownRequested()
-    ) {
       return "shutdown";
     }
 
@@ -3203,9 +3184,6 @@ export async function superviseFullStackProcesses(
       context: args.context,
       delayMilliseconds: args.delayMilliseconds,
       isShutdownRequested: args.isShutdownRequested,
-      ...(args.onManagedProcessExit === undefined
-        ? {}
-        : { onManagedProcessExit: args.onManagedProcessExit }),
       processName: "server",
       start: args.startServer,
     });
@@ -3471,13 +3449,11 @@ export async function superviseBbAppStart(
       await starters.startServer();
     } catch (error) {
       endStep(red("✗"), "Server failed to start");
-      const message = error instanceof Error ? error.message : String(error);
-      log(" ", dim(message));
+      log(" ", dim(error instanceof Error ? error.message : String(error)));
       logManagedProcessStartupFailureContext({
         context: args.context,
         processName: "server",
       });
-      await args.onStartupFailed?.(`Server failed to start: ${message}`);
       process.exitCode = 1;
       await args.shutdown("SIGTERM");
       return "stopped";
@@ -3495,7 +3471,6 @@ export async function superviseBbAppStart(
         context: args.context,
         processName: "daemon",
       });
-      await args.onStartupFailed?.("Host daemon failed to start");
       process.exitCode = 1;
       await args.shutdown("SIGTERM");
       return "stopped";
@@ -3520,9 +3495,6 @@ export async function superviseBbAppStart(
       context: args.context,
       delayMilliseconds: args.delayMilliseconds,
       isShutdownRequested: args.isShutdownRequested,
-      ...(args.onManagedProcessExit === undefined
-        ? {}
-        : { onManagedProcessExit: args.onManagedProcessExit }),
       onServerMoved: enterMovedMode,
       processes: args.processes,
       readServerMovedFile: args.readServerMovedFile,
@@ -3757,7 +3729,6 @@ export async function runSourceAppUpdateShim(
   delete installEnv.NODE_ENV;
   return runSourceShim({
     dataDir: runtime.context.dataDir,
-    dbPath: runtime.context.dbPath,
     installDependencies: async () => {
       log(dim("●"), "Installing dependencies");
       await runCheckedCommand(runCommand, "pnpm install", {
@@ -3768,7 +3739,6 @@ export async function runSourceAppUpdateShim(
         onLine: (line) => process.stdout.write(`  ${dim(line)}\n`),
       });
     },
-    logDir: runtime.context.logDir,
     output: shimOutput,
     prepareRuntime: async () => {
       log(dim("●"), "Rebuilding bb");
@@ -3921,8 +3891,6 @@ export async function runBbApp(
         version: runtime.context.appVersion,
       },
       dataDir: runtime.context.dataDir,
-      dbPath: runtime.context.dbPath,
-      logDir: runtime.context.logDir,
       output: shimOutput,
       spawnLauncher: (revision, mode) =>
         spawnNpmLauncher({ cliArgs: launcherArgs, mode, revision }),
@@ -4025,9 +3993,6 @@ export async function runBbApp(
       : createLauncherAppUpdateController({
           current: ownAppRevision,
           dataDir: context.dataDir,
-          dbPath: context.dbPath,
-          isFullStackRunning: () =>
-            processes.serverRun !== null && processes.daemonRun !== null,
           log: (message) => log(dim("●"), message),
           mode: appUpdateMode,
           repoRoot:
@@ -4049,10 +4014,6 @@ export async function runBbApp(
         ? {}
         : {
             onFullStackReady: () => appUpdateController.onFullStackReady(),
-            onManagedProcessExit: () =>
-              appUpdateController.onManagedProcessExit(),
-            onStartupFailed: (message: string) =>
-              appUpdateController.onStartupFailed(message),
           }),
       prepareFullStack: async (entry) => {
         const fullStackRuntime = await resolveFullStackRuntime(entry);
